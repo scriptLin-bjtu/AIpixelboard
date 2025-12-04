@@ -1,0 +1,5 @@
+{
+  "name": "PixelForge AI",
+  "description": "A professional-grade pixel art editor with frame-by-frame animation, GIF export, and AI-powered sprite generation using Gemini.",
+  "requestFramePermissions": []
+}
