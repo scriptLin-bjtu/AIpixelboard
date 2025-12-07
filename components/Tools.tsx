@@ -1,11 +1,11 @@
 import React from 'react';
-import { Pencil, Eraser, PaintBucket, Pipette, Move, Download, Wand2, Image as ImageIcon } from 'lucide-react';
+import { Pencil, Eraser, PaintBucket, Pipette, Move, Download, Wand2, Image as ImageIcon, Grid3X3 } from 'lucide-react';
 import { ToolType } from '../types';
 
 interface ToolsProps {
   activeTool: ToolType;
   onSelectTool: (tool: ToolType) => void;
-  onExport: (type: 'png' | 'gif') => void;
+  onExport: (type: 'png' | 'gif' | 'sheet') => void;
   onGenerateAI: () => void;
 }
 
@@ -53,9 +53,16 @@ const Tools: React.FC<ToolsProps> = ({ activeTool, onSelectTool, onExport, onGen
 
       <div className="flex flex-col gap-2 w-full px-2">
          <button
+            onClick={() => onExport('sheet')}
+            className="p-3 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-orange-400 transition-all"
+            title="Export Sprite Sheet"
+         >
+            <Grid3X3 size={20} />
+         </button>
+         <button
             onClick={() => onExport('png')}
             className="p-3 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-green-400 transition-all"
-            title="Export PNG"
+            title="Export Frame PNG"
          >
             <ImageIcon size={20} />
          </button>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ProjectState, ToolType, Frame } from './types';
 import { DEFAULT_SIZE, DEFAULT_PALETTE, INITIAL_FRAME_ID } from './constants';
 import Tools from './components/Tools';
@@ -6,8 +6,10 @@ import Palette from './components/Palette';
 import Timeline from './components/Timeline';
 import Canvas from './components/Canvas';
 import { generatePixelArt } from './services/geminiService';
-import { exportFrameAsPNG, createGIF } from './utils/exportUtils';
-import { Loader2, X, Wand2, FilePlus } from 'lucide-react';
+import { exportFrameAsPNG, createGIF, exportSpriteSheet } from './utils/exportUtils';
+import { importSpriteSheet } from './utils/importUtils';
+import { rgbaToHex } from './utils/pixelUtils';
+import { Loader2, X, Wand2, FilePlus, Upload } from 'lucide-react';
 
 // Initial Empty Grid
 const createEmptyGrid = (width: number, height: number) => Array(width * height).fill('transparent');
@@ -34,6 +36,8 @@ const App: React.FC = () => {
 
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [newProjectSize, setNewProjectSize] = useState({ width: 32, height: 32 });
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Shortcuts
   useEffect(() => {
@@ -97,11 +101,17 @@ const App: React.FC = () => {
       setIsNewProjectModalOpen(false);
   };
 
-  const handleExport = async (type: 'png' | 'gif') => {
+  const handleExport = async (type: 'png' | 'gif' | 'sheet') => {
       if (type === 'png') {
           const dataUrl = exportFrameAsPNG(frames[currentFrameIdx].pixels, size, 20);
           const link = document.createElement('a');
           link.download = `pixel-art-frame-${currentFrameIdx + 1}.png`;
+          link.href = dataUrl;
+          link.click();
+      } else if (type === 'sheet') {
+          const dataUrl = exportSpriteSheet(frames, size, 1);
+          const link = document.createElement('a');
+          link.download = `sprite-sheet.png`;
           link.href = dataUrl;
           link.click();
       } else {
@@ -115,6 +125,35 @@ const App: React.FC = () => {
               URL.revokeObjectURL(url);
           }
       }
+  };
+
+  const handleImportClick = () => {
+      fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+          if (event.target?.result && typeof event.target.result === 'string') {
+              try {
+                  const importedFrames = await importSpriteSheet(event.target.result, size);
+                  if (importedFrames.length > 0) {
+                      setFrames(importedFrames);
+                      setCurrentFrameIdx(0);
+                  }
+              } catch (error) {
+                  console.error("Failed to import sprite sheet:", error);
+                  alert("Failed to import sprite sheet. Please ensure the image dimensions align with the current project size.");
+              }
+          }
+      };
+      reader.readAsDataURL(file);
+      
+      // Reset input so same file can be selected again
+      e.target.value = '';
   };
 
   const handleGenerateAI = async () => {
@@ -150,9 +189,8 @@ const App: React.FC = () => {
                     if (a < 128) {
                         newPixels.push('transparent');
                     } else {
-                        // Convert RGB to Hex
-                        const hex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
-                        newPixels.push(hex);
+                        // Use helper
+                        newPixels.push(rgbaToHex(r, g, b));
                     }
                 }
                 
@@ -172,6 +210,8 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen bg-zinc-950 text-zinc-100">
+      <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+
       {/* Top Bar */}
       <header className="h-12 border-b border-zinc-800 flex items-center px-4 justify-between bg-zinc-900 z-20">
         <div className="flex items-center gap-2">
@@ -181,6 +221,12 @@ const App: React.FC = () => {
         <div className="flex items-center gap-4 text-xs text-zinc-400">
            <span>{size.width}x{size.height}px</span>
            <button onClick={() => setShowGrid(!showGrid)} className={`hover:text-white ${showGrid ? 'text-indigo-400' : ''}`}>Grid</button>
+           
+           <div className="h-4 w-px bg-zinc-700" />
+           
+           <button onClick={handleImportClick} className="flex items-center gap-1 hover:text-white text-zinc-300">
+                <Upload size={14} /> Import
+           </button>
            <button onClick={() => setIsNewProjectModalOpen(true)} className="flex items-center gap-1 hover:text-white text-zinc-300">
                 <FilePlus size={14} /> New
            </button>

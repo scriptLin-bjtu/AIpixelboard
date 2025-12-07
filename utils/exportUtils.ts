@@ -22,6 +22,34 @@ export const exportFrameAsPNG = (pixels: string[], size: Size, scale = 10): stri
   return canvas.toDataURL('image/png');
 };
 
+export const exportSpriteSheet = (frames: Frame[], size: Size, scale = 1): string => {
+  const canvas = document.createElement('canvas');
+  // Create a horizontal strip
+  canvas.width = size.width * frames.length * scale;
+  canvas.height = size.height * scale;
+  const ctx = canvas.getContext('2d');
+  
+  if (!ctx) return '';
+  ctx.imageSmoothingEnabled = false;
+
+  frames.forEach((frame, idx) => {
+      // Draw individual pixels for each frame
+      // We do this instead of drawing a frame canvas to ensure clean scaling if needed
+      frame.pixels.forEach((color, pIdx) => {
+          if (color && color !== 'transparent') {
+              const { x, y } = getCoords(pIdx, size.width);
+              ctx.fillStyle = color;
+              // Offset by frame index * width
+              const drawX = (idx * size.width + x) * scale;
+              const drawY = y * scale;
+              ctx.fillRect(drawX, drawY, scale, scale);
+          }
+      });
+  });
+
+  return canvas.toDataURL('image/png');
+};
+
 export const createGIF = async (frames: Frame[], size: Size, fps: number, scale = 10): Promise<Blob | null> => {
   try {
     const mod: any = await import('gifenc');
